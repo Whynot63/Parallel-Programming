@@ -115,18 +115,38 @@ def gauss(A, b, num_of_threads=1):
 
 
 def main():
-    _, p, _, _, A_path, b_path, *_ = sys.argv
+    _, p, number_of_unknowns, numer_of_equations, A_path, b_path, *_ = sys.argv
 
-    A = [
-        [float(coefficient) for coefficient in row.strip().split()]
-        for row in open(A_path).readlines()
-    ]
-    b = [float(constant) for constant in open(b_path).read().strip().split()]
+    with open(A_path) as A_file:
+        A = [
+            [get_number(A_file) for _ in range(int(numer_of_equations))]
+            for _ in range(int(number_of_unknowns))
+        ]
+
+    with open(b_path) as b_file:
+        b = [get_number(b_file) for _ in range(int(numer_of_equations))]
 
     X = gauss(A, b, num_of_threads=int(p))
 
     with open("solution.txt", "w") as f:
         print(*X, file=f)
+
+
+def get_number(file_obj):
+    with_dot = False
+    number = ""
+    while file_obj:
+        symbol = file_obj.read(1)
+        if symbol == "-" and number == "":
+            number = "-"
+        elif "0" <= symbol <= "9":
+            number = number + symbol
+        elif symbol == "." and not with_dot:
+            numer = number + symbol
+            with_dot = True
+        else:
+            break
+    return float(number)
 
 
 if __name__ == "__main__":
