@@ -1,4 +1,7 @@
+import Data.Time
+import System.Environment
 import Control.Parallel.Strategies
+import Text.Printf
 
 
 type Number = Double
@@ -43,8 +46,43 @@ solver :: (Matrix, Vector, Number, Int) -> Vector
 solver (a, b, eps, parCnt) = solver' (a, b, replicate (length b) 0, eps, parCnt)
 
 
+readNumber :: String -> Number
+readNumber = read
+
+readInt :: String -> Int
+readInt = read
+
+
+main :: IO ()
 main = do
-  print
-    (solver
-      ([[10, 1, -1], [1, 10, -1], [-1, 1, 10]], [11, 10, 10], 0.1, 3)
-    )
+  start <- getCurrentTime
+  (parCnt : nEquations : nUnknowns : aFile : bFile : _) <- getArgs
+
+  let n = read nEquations :: Int
+  let m = read nUnknowns :: Int
+
+  aText <- readFile aFile
+  let aFlat = map readNumber . words $ aText
+
+  let a = [[aFlat !! (i * m + j) | j <- [0..m-1]] | i <- [0..n-1]]
+
+  bText <- readFile bFile
+  let b = map readNumber . words $ bText
+
+  readEnd <- getCurrentTime
+  printf "Read time: %.3f seconds\n" (realToFrac (diffUTCTime readEnd start):: Double)
+
+  let x = solver(a, b, 0.0001, (read parCnt :: Int))
+  printf ("Solution Found!" ++ (show $ head x))
+
+  solverEnd <- getCurrentTime
+  printf "Solver time: %.3f seconds\n" (realToFrac (diffUTCTime solverEnd readEnd):: Double)
+
+  writeFile "solution.txt" $ show $ x
+  writeEnd <- getCurrentTime
+  printf "Write time: %.3f seconds\n" (realToFrac (diffUTCTime writeEnd solverEnd):: Double)
+
+  printf "Total time: %.3f seconds\n" (realToFrac (diffUTCTime writeEnd start):: Double)
+
+
+
