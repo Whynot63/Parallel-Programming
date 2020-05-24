@@ -15,6 +15,9 @@ norm :: Vector -> Number
 norm [] = 0.0
 norm v = sqrt $ sum [x*x | x <- v]
 
+breakCondition :: (Vector, Vector, Number) -> Bool
+breakCondition (v1, v2, eps) = all (<eps) $ zipWith (\a b -> abs(a - b) / abs(a)) v1 v2
+
 
 partialIter :: (Matrix, Vector, Vector, Int, Int) -> Vector
 partialIter (a, b, x_k, from, to) = x_k1_from_to where
@@ -38,7 +41,7 @@ iter (a, b, x_k, parCnt)
 
 solver' :: (Matrix, Vector, Vector, Number, Int) -> Vector
 solver' (a, b, x_k, eps, parCnt)
-  | (norm $ zipWith (-) x_k x_k1) < eps = x_k 
+  | breakCondition (x_k, x_k1, eps) = x_k 
   | otherwise = solver' (a, b, x_k1, eps, parCnt) where 
   x_k1 = iter (a, b, x_k, parCnt)
 
@@ -107,7 +110,6 @@ main = do
   printf "Preparation time: %.3f seconds\n" (realToFrac (diffUTCTime prepareEnd readEnd):: Double)
 
   let x = solver(a, b, 0.0001, (read parCnt :: Int))
-  printf ("Solution Found!" ++ (show $ head x))
 
   solverEnd <- getCurrentTime
   printf "Solver time: %.3f seconds\n" (realToFrac (diffUTCTime solverEnd prepareEnd):: Double)
