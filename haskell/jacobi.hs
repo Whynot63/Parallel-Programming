@@ -2,7 +2,8 @@ import Data.Time
 import System.Environment
 import Control.Parallel.Strategies
 import Text.Printf
-
+import Data.Ord
+import Data.List
 
 type Number = Double
 type Vector = [Number]
@@ -46,6 +47,35 @@ solver :: (Matrix, Vector, Number, Int) -> Vector
 solver (a, b, eps, parCnt) = solver' (a, b, replicate (length b) 0, eps, parCnt)
 
 
+-- Stolen from https://stackoverflow.com/a/14550568
+absArgmax :: Vector -> Int
+absArgmax xs = snd $ maximumBy (comparing $ abs . fst) (zip xs [0..]);
+
+
+moveNthElemToHead :: (Vector, Int) -> Vector
+moveNthElemToHead ([], _) = []
+moveNthElemToHead (v, n) = (nthElem: before ++ after) where 
+  nthElem = v !! n
+  before = take n v
+  after = tail $ drop n v
+
+
+prepareMatrix' :: Matrix -> Matrix
+prepareMatrix' (row: rows) 
+  | rows == [] = [row]
+  | otherwise = (preparedRow: prepareMatrix' preparedRows) where 
+    maxIdx = absArgmax row
+    preparedRow = moveNthElemToHead (row, maxIdx)
+    preparedRows = map (\r -> moveNthElemToHead (r, maxIdx)) rows
+
+prepareMatrix :: Matrix -> (Matrix, Vector)
+prepareMatrix m = (prepM, idxs) where 
+  n = length m
+  mWithIdxs = m ++ [[0..]]
+  prepMWithIdxs = prepareMatrix' mWithIdxs
+  prepM = init prepMWithIdxs  
+  idxs = take n $ last prepMWithIdxs
+
 readNumber :: String -> Number
 readNumber = read
 
@@ -72,15 +102,23 @@ main = do
   readEnd <- getCurrentTime
   printf "Read time: %.3f seconds\n" (realToFrac (diffUTCTime readEnd start):: Double)
 
+  let (aPrepared, idx) = prepareMatrix a
+  prepareEnd <- getCurrentTime
+  printf "Preparation time: %.3f seconds\n" (realToFrac (diffUTCTime prepareEnd readEnd):: Double)
+
   let x = solver(a, b, 0.0001, (read parCnt :: Int))
   printf ("Solution Found!" ++ (show $ head x))
 
   solverEnd <- getCurrentTime
-  printf "Solver time: %.3f seconds\n" (realToFrac (diffUTCTime solverEnd readEnd):: Double)
+  printf "Solver time: %.3f seconds\n" (realToFrac (diffUTCTime solverEnd prepareEnd):: Double)
 
-  writeFile "solution.txt" $ show $ x
+  let xFinall = map snd $ sort $ zip idx x
+  sortEnd <- getCurrentTime
+  printf "Sort time: %.3f seconds\n" (realToFrac (diffUTCTime sortEnd solverEnd):: Double)
+
+  writeFile "solution.txt" $ show $ xFinall
   writeEnd <- getCurrentTime
-  printf "Write time: %.3f seconds\n" (realToFrac (diffUTCTime writeEnd solverEnd):: Double)
+  printf "Write time: %.3f seconds\n" (realToFrac (diffUTCTime writeEnd sortEnd):: Double)
 
   printf "Total time: %.3f seconds\n" (realToFrac (diffUTCTime writeEnd start):: Double)
 
